@@ -1,0 +1,11 @@
+# Ficheiros binários (sem conversão de fim de linha nem diff de texto)
+*.pkt binary
+*.pka binary
+*.docx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+
+# Texto
+*.txt text eol=crlf
+*.md text eol=lf
