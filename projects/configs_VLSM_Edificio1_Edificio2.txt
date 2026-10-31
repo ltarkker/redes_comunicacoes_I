@@ -1,0 +1,378 @@
+==========================================================================
+ RCOM1 - PL03 EXERCICIO 3 - VLSM 192.168.0.0/24
+ Fabrica / IoT / Marketing / Contabilidade / Admin / RT
+ Packet Tracer: VLSM_Fab_IoT_Mark_Cont_Admin.pkt
+ Configuracao final consolidada (estado actual dos equipamentos)
+ Estado: CONCLUIDO - conectividade total entre as 5 redes (0% perdas)
+ Versao do Packet Tracer do ficheiro: 9.0.1.0858
+==========================================================================
+
+Indice
+  1. Topologia
+  2. Plano VLSM (tabela da ficha PL03)
+  3. Edificio-1 (Router0) - configuracao completa
+  4. Edificio-2 (Router1) - configuracao completa
+  5. Edificio-1 - bloco de reorganizacao das interfaces (usado na aula)
+  6. Laptop0 - acesso por consola
+  7. PCs - configuracao por terminal (ipconfig)
+  8. Testes e resultados
+  9. Notas no ficheiro .pkt
+ 10. Notas - erros que apareceram e como se resolveram
+
+
+1. TOPOLOGIA
+--------------------------------------------------------------------------
+Edificio-1 (Router0, Cisco 2911)
+  Gig0/1   -> Switch0 Gig0/1 -> PC0 (Fa0/2)       Fabrica
+  Gig0/2   -> Switch1 Gig0/1 -> PC1 (Fa0/22)      Marketing
+  Gig0/0   -> Switch2 Gig0/1 -> PC2 (Fa0/21)      IoT
+  Gig0/1/0 -> fibra -> Edificio-2 Gig0/1/0        RT
+  Console  -> Laptop0 (RS 232), cabo Console
+
+Edificio-2 (Router1, Cisco 2911)
+  Gig0/0   -> Switch3 Gig0/1 -> PC4 (Fa0/3)       Contabilidade
+  Gig0/1   -> Switch4 Gig0/1 -> PC3 (Fa0/23)      Admin
+  Gig0/1/0 -> fibra -> Edificio-1 Gig0/1/0        RT
+
+Switches: 2960-24TT (configuracao de fabrica)
+Modulos dos 2911: HWIC-2T (slot 0, Serial0/0/0-0/1, nao usado)
+                  HWIC-1GE-SFP + GLC-LH-SMD (slot 1, Gig0/1/0, fibra)
+
+Correspondencia com o esquema da ficha PL03:
+  ficha Switch0 (Fabrica)       = pkt Switch0
+  ficha Switch1 (Marketing)     = pkt Switch1
+  ficha Switch4 (IoT)           = pkt Switch2
+  ficha Switch2 (Contabilidade) = pkt Switch3
+  ficha Switch3 (Admin)         = pkt Switch4
+
+
+2. PLANO VLSM - rede base 192.168.0.0/24
+--------------------------------------------------------------------------
+Rede             Hosts  Rede/prefixo       Mascara           Broadcast       Intervalo
+Fabrica          50     192.168.0.0/26     255.255.255.192   192.168.0.63    .1   - .62
+IoT              32     192.168.0.64/26    255.255.255.192   192.168.0.127   .65  - .126
+Marketing        20     192.168.0.128/27   255.255.255.224   192.168.0.159   .129 - .158
+Contabilidade    10     192.168.0.160/28   255.255.255.240   192.168.0.175   .161 - .174
+Admin            5      192.168.0.176/29   255.255.255.248   192.168.0.183   .177 - .182
+RT               2      192.168.0.184/30   255.255.255.252   192.168.0.187   .185 - .186
+Livre                   192.168.0.188/30 e 192.168.0.192/26
+
+Convencao adoptada (a ficha so define redes e intervalos):
+  gateway = 1.o host da rede | PC = 2.o host da rede
+  RT: .185 = Edificio-1 | .186 = Edificio-2
+
+Rede             Gateway (router)               PC     IP do PC
+Fabrica          192.168.0.1   (E1 Gig0/1)      PC0    192.168.0.2
+Marketing        192.168.0.129 (E1 Gig0/2)      PC1    192.168.0.130
+IoT              192.168.0.65  (E1 Gig0/0)      PC2    192.168.0.66
+Admin            192.168.0.177 (E2 Gig0/1)      PC3    192.168.0.178
+Contabilidade    192.168.0.161 (E2 Gig0/0)      PC4    192.168.0.162
+
+
+3. EDIFICIO-1 (Router0) - CONFIGURACAO COMPLETA
+--------------------------------------------------------------------------
+Reconstroi o router de raiz no estado final.
+- Router de fabrica: colar o bloco inteiro a partir do prompt "Router>".
+- Router que ja tem enable secret: escrever "enable" e a password
+  istec123 a mao, e colar o bloco a partir de "configure terminal".
+
+enable
+configure terminal
+hostname Edificio-1
+no ip domain-lookup
+service password-encryption
+enable secret istec123
+banner motd #Acesso Restrito#
+line console 0
+ password istec123
+ login
+ exit
+interface GigabitEthernet0/1
+ description Fab - Switch0
+ ip address 192.168.0.1 255.255.255.192
+ no shutdown
+interface GigabitEthernet0/2
+ description Mark - Switch1
+ ip address 192.168.0.129 255.255.255.224
+ no shutdown
+interface GigabitEthernet0/0
+ description IoT - Switch2
+ ip address 192.168.0.65 255.255.255.192
+ no shutdown
+interface GigabitEthernet0/1/0
+ description RT - Router1
+ ip address 192.168.0.185 255.255.255.252
+ no shutdown
+ exit
+ip route 192.168.0.160 255.255.255.240 192.168.0.186
+ip route 192.168.0.176 255.255.255.248 192.168.0.186
+ip dhcp excluded-address 192.168.0.1
+ip dhcp excluded-address 192.168.0.65
+ip dhcp excluded-address 192.168.0.129
+ip dhcp pool FAB
+ network 192.168.0.0 255.255.255.192
+ default-router 192.168.0.1
+ip dhcp pool IOT
+ network 192.168.0.64 255.255.255.192
+ default-router 192.168.0.65
+ip dhcp pool MARK
+ network 192.168.0.128 255.255.255.224
+ default-router 192.168.0.129
+end
+write memory
+
+
+4. EDIFICIO-2 (Router1) - CONFIGURACAO COMPLETA
+--------------------------------------------------------------------------
+Mesmas regras de colagem do Edificio-1.
+
+enable
+configure terminal
+hostname Edificio-2
+no ip domain-lookup
+service password-encryption
+enable secret istec123
+banner motd #Acesso Restrito#
+line console 0
+ password istec123
+ login
+ exit
+interface GigabitEthernet0/0
+ description Cont - Switch3
+ ip address 192.168.0.161 255.255.255.240
+ no shutdown
+interface GigabitEthernet0/1
+ description Admin - Switch4
+ ip address 192.168.0.177 255.255.255.248
+ no shutdown
+interface GigabitEthernet0/1/0
+ description RT - Router0
+ ip address 192.168.0.186 255.255.255.252
+ no shutdown
+ exit
+ip route 192.168.0.0 255.255.255.192 192.168.0.185
+ip route 192.168.0.64 255.255.255.192 192.168.0.185
+ip route 192.168.0.128 255.255.255.224 192.168.0.185
+ip dhcp excluded-address 192.168.0.161
+ip dhcp excluded-address 192.168.0.177
+ip dhcp pool CONT
+ network 192.168.0.160 255.255.255.240
+ default-router 192.168.0.161
+ip dhcp pool ADMIN
+ network 192.168.0.176 255.255.255.248
+ default-router 192.168.0.177
+end
+write memory
+
+
+5. EDIFICIO-1 - BLOCO DE REORGANIZACAO DAS INTERFACES (usado na aula)
+--------------------------------------------------------------------------
+Usado para passar da distribuicao provisoria para a da ficha. Primeiro
+retira os IPs das tres LANs (evita o erro "overlaps") e depois atribui.
+Colar a partir de "Edificio-1#".
+
+configure terminal
+interface GigabitEthernet0/0
+ no ip address
+interface GigabitEthernet0/1
+ no ip address
+interface GigabitEthernet0/2
+ no ip address
+interface GigabitEthernet0/1
+ description Fab - Switch0
+ ip address 192.168.0.1 255.255.255.192
+interface GigabitEthernet0/2
+ description Mark - Switch1
+ ip address 192.168.0.129 255.255.255.224
+interface GigabitEthernet0/0
+ description IoT - Switch2
+ ip address 192.168.0.65 255.255.255.192
+end
+write memory
+
+
+6. LAPTOP0 - ACESSO POR CONSOLA AO EDIFICIO-1
+--------------------------------------------------------------------------
+Cabo: Connections (raio laranja) -> Console (azul-claro)
+      Laptop0: RS 232  ->  Edificio-1: Console
+Laptop0 -> Desktop -> Terminal
+      9600 bps, 8 data bits, Parity None, 1 stop bit, Flow Control None
+      OK -> Enter
+Login:
+  Acesso Restrito / User Access Verification
+  Password: istec123          (line console 0)
+  Edificio-1> enable
+  Password: istec123          (enable secret)
+  Edificio-1#
+
+
+7. PCs - CONFIGURACAO POR TERMINAL
+--------------------------------------------------------------------------
+Em cada PC: Desktop -> Command Prompt
+Sintaxe: ipconfig <IP> <mascara> <gateway>   (ipconfig tudo junto)
+Uma linha de cada vez: a linha de comandos dos PCs nao aceita blocos
+de varias linhas coladas (juntam-se numa so e da "Invalid Command").
+
+PC0 (Fabrica)
+ipconfig 192.168.0.2 255.255.255.192 192.168.0.1
+
+PC1 (Marketing)
+ipconfig 192.168.0.130 255.255.255.224 192.168.0.129
+
+PC2 (IoT)
+ipconfig 192.168.0.66 255.255.255.192 192.168.0.65
+
+PC3 (Admin)
+ipconfig 192.168.0.178 255.255.255.248 192.168.0.177
+
+PC4 (Contabilidade)
+ipconfig 192.168.0.162 255.255.255.240 192.168.0.161
+
+Confirmar em cada PC:
+ipconfig
+
+IMPORTANTE: confirmar que o Default Gateway ficou preenchido. Se
+aparecer 0.0.0.0, definir em Desktop -> IP Configuration -> Static ->
+Default Gateway. Sem gateway o PC so fala com a propria rede: o ping
+ao gateway funciona, mas os pings para outras redes dao
+"Request timed out".
+
+Alternativa: Desktop -> IP Configuration -> DHCP (os pools das
+secoes 3 e 4 entregam IP, mascara e gateway automaticamente).
+
+
+8. TESTES E RESULTADOS
+--------------------------------------------------------------------------
+8.1 Edificio-1 (modo #)
+
+sh ip int br
+  GigabitEthernet0/0     192.168.0.65    up  up
+  GigabitEthernet0/1     192.168.0.1     up  up
+  GigabitEthernet0/2     192.168.0.129   up  up
+  GigabitEthernet0/1/0   192.168.0.185   up  up
+
+sh ip route
+  S  192.168.0.160/28 [1/0] via 192.168.0.186
+  S  192.168.0.176/29 [1/0] via 192.168.0.186
+
+ping 192.168.0.186
+
+8.2 Edificio-2 (modo #)
+
+sh ip int br
+  GigabitEthernet0/0     192.168.0.161   up  up
+  GigabitEthernet0/1     192.168.0.177   up  up
+  GigabitEthernet0/1/0   192.168.0.186   up  up
+
+sh ip route
+  S  192.168.0.0/26   [1/0] via 192.168.0.185
+  S  192.168.0.64/26  [1/0] via 192.168.0.185
+  S  192.168.0.128/27 [1/0] via 192.168.0.185
+
+ping 192.168.0.185
+
+8.3 Seguranca (qualquer router)
+
+sh run
+  line con 0 -> password 7 ...   (service password-encryption)
+  enable secret 5 ...            (hash)
+  banner motd ^CAcesso Restrito^C
+
+8.4 PC0 - Fabrica (Desktop -> Command Prompt)
+
+ping 192.168.0.1
+ping 192.168.0.130
+ping 192.168.0.66
+ping 192.168.0.162
+ping 192.168.0.178
+tracert 192.168.0.162
+  1  192.168.0.1
+  2  192.168.0.186
+  3  192.168.0.162
+
+8.5 PC4 - Contabilidade (sentido inverso)
+
+ping 192.168.0.161
+ping 192.168.0.2
+ping 192.168.0.130
+ping 192.168.0.66
+ping 192.168.0.178
+
+O primeiro pacote de cada destino pode perder-se por causa do ARP.
+
+8.6 Resultados obtidos (PC0 - Fabrica)
+
+1.a ronda (tabelas ARP vazias):
+  Destino           Rede            Recebidos  TTL  Caminho
+  192.168.0.1       Gateway E1      4/4        255  directo
+  192.168.0.130     Marketing       3/4        127  1 router
+  192.168.0.66      IoT             3/4        127  1 router
+  192.168.0.162     Contabilidade   2/4        126  2 routers (fibra)
+  192.168.0.178     Admin           3/4        126  2 routers (fibra)
+
+2.a ronda (ARP resolvido):
+  192.168.0.162     Contabilidade   4/4 (0% loss)   TTL 126
+  192.168.0.178     Admin           4/4 (0% loss)   TTL 126
+
+Leitura:
+- Perdas so na 1.a ronda: cada router no caminho tem de resolver o ARP
+  do proximo salto (2 routers ate a Contabilidade -> 2 pacotes perdidos;
+  na Admin so 1, porque o ARP do link RT ja estava resolvido).
+- TTL: o PC envia com 128 e cada router desconta 1
+  (127 = 1 router, 126 = 2 routers). Os routers respondem com 255.
+
+
+9. NOTAS NO FICHEIRO .PKT
+--------------------------------------------------------------------------
+O .pkt final tem 15 notas no espaco logico:
+- Titulo: PL03 - Ex. 3 - VLSM 192.168.0.0/24
+- Edificio-1 e Edificio-2: interfaces, rede e IP de cada uma
+- Cada switch: nome da rede, n.o de hosts, rede/prefixo e broadcast
+- Cada PC: IP/prefixo, mascara e gateway
+- Fibra: Rede RT 192.168.0.184/30 (.185 <-> .186)
+- Laptop0: ligacao de consola (RS 232 -> Console, 9600 8N1) e password
+
+
+10. NOTAS - ERROS QUE APARECERAM E COMO SE RESOLVERAM
+--------------------------------------------------------------------------
+- "Invalid File ... corrupted Physical Workspace data" ao abrir o .pkt:
+  erro no ficheiro gerado (caminho fisico dos equipamentos no rack).
+  Corrigido na versao actual do .pkt.
+
+- "% Invalid input" com prompt ">": comando de modo privilegiado em
+  modo utilizador. Correr "enable" primeiro.
+
+- "Translating ... domain server (255.255.255.255)": comando
+  desconhecido tratado como nome de host. Ctrl+Shift+6 interrompe;
+  "no ip domain-lookup" resolve de vez. Acontece tambem com "end" em
+  modo # (o "end" so existe nos modos (config)#).
+
+- "% ... overlaps with ...": a mesma rede, ou uma que se sobrepoe, ja
+  esta noutra interface. Retirar primeiro com "no ip address" na
+  interface antiga. Ex.: 192.168.0.129 com /26 cobre .128-.191 e apanha
+  o link RT .184/30; o Marketing tem de ser /27 (255.255.255.224).
+
+- Mascara com 5 octetos (255.255.255.255.0): "% Invalid input".
+
+- Colar "enable" seguido de mais linhas quando ja existe enable secret:
+  a linha seguinte e consumida como password. Fazer o enable a mao.
+
+- "show ip brief": comando incompleto. Forma abreviada correcta:
+  "sh ip int br".
+
+- "ip config" no PC: "Invalid Command". O comando e "ipconfig".
+
+- Varias linhas coladas de uma vez no Command Prompt do PC: juntam-se
+  numa so linha e dao "Invalid Command". Colar uma linha de cada vez.
+
+- PC com Default Gateway 0.0.0.0 apesar do ipconfig com 3 argumentos:
+  ping ao proprio gateway OK, pings para outras redes "Request timed
+  out" (o destino recebe o pedido mas nao tem por onde responder).
+  Resolvido preenchendo o Default Gateway em IP Configuration.
+
+- Link-local IPv6 igual em todos os PCs: campo copiado do modelo ao
+  gerar o .pkt. Corrigido no ficheiro final (sem impacto em IPv4).
+
+- Historico do Edificio-1: passou por duas distribuicoes provisorias
+  antes da final da ficha. A secao 3 ja reflecte o estado final; a
+  secao 5 e o bloco que fez a mudanca.
