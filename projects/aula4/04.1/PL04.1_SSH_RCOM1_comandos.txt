@@ -1,0 +1,127 @@
+==========================================================================
+PL04.1 - SSH
+Lista de comandos (resolução)
+Redes e Comunicações 1 - LEI - ISTEC Porto
+==========================================================================
+
+
+1. PRESSUPOSTOS
+--------------------------------------------------------------------------
+- A ficha não tem exercícios numerados; aplica os passos descritos num cenário
+  mínimo com o endereçamento da ficha (172.22.22.0/24).
+- PC de teste (não definido na ficha): 172.22.22.10/24, gateway 172.22.22.1.
+- Utilizador SSH: admin / class (privilege 15) | enable secret = class.
+
+2. TOPOLOGIA E ENDEREÇAMENTO
+--------------------------------------------------------------------------
+Ligação          Origem            Destino        Cabo
+router1 - SW1    router1 Gig0/0    SW1 Gig0/1     Copper Straight-Through
+SW1 - PC0        SW1 Fa0/1         PC0 Fa0        Copper Straight-Through
+
+Equip.   Interface  IP               Máscara          Gateway
+router1  Gig0/0     172.22.22.1      255.255.255.0    -
+SW1      VLAN 1     172.22.22.222    255.255.255.0    172.22.22.1
+PC0      Fa0        172.22.22.10     255.255.255.0    172.22.22.1
+
+3. ROUTER ROUTER1
+--------------------------------------------------------------------------
+--- router1 ---------------------------------------------------------------
+Colar no separador CLI a partir do prompt inicial (responder "no" ao diálogo inicial, se aparecer).
+A geração da chave RSA demora alguns segundos.
+
+enable
+configure terminal
+! hostname e domínio são obrigatórios para gerar a chave RSA
+hostname router1
+ip domain-name dominio.pt
+no ip domain-lookup
+! password do modo privilegiado
+enable secret class
+service password-encryption
+! utilizador local (o SSH exige utilizador, ao contrário do Telnet)
+username admin privilege 15 secret class
+! chave RSA de 1024 bits (SSH v2 exige pelo menos 768)
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+! bloqueio de 60 s após 3 tentativas falhadas em 60 s
+login block-for 60 attempts 3 within 60
+! endereço para acesso remoto
+interface GigabitEthernet0/0
+ ip address 172.22.22.1 255.255.255.0
+ no shutdown
+ exit
+! linhas vty: só SSH, autenticação local, timeout de 10 min
+line vty 0 4
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+
+4. SWITCH SW1
+--------------------------------------------------------------------------
+--- SW1 -------------------------------------------------------------------
+Colar no separador CLI a partir do prompt inicial (responder "no" ao diálogo inicial, se aparecer).
+
+enable
+configure terminal
+hostname SW1
+ip domain-name dominio.pt
+no ip domain-lookup
+enable secret class
+service password-encryption
+username admin privilege 15 secret class
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+login block-for 60 attempts 3 within 60
+! endereço de gestão na VLAN 1
+interface vlan 1
+ ip address 172.22.22.222 255.255.255.0
+ no shutdown
+ exit
+! necessário para o switch responder a hosts de outras redes
+ip default-gateway 172.22.22.1
+! nos switches as linhas vty vão de 0 a 15
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+
+5. PC0
+--------------------------------------------------------------------------
+Desktop > IP Configuration > Static, ou Desktop > Command Prompt.
+O Command Prompt do PC não aceita várias linhas coladas de uma vez: uma linha por PC.
+
+PC0:  ipconfig 172.22.22.10 255.255.255.0 172.22.22.1
+
+6. VERIFICAÇÃO
+--------------------------------------------------------------------------
+No router1 e no SW1:
+  show ip ssh                  -> SSH Enabled - version 2.0
+  show crypto key mypubkey rsa -> confirma a chave gerada
+  show login                   -> estado do login block-for
+
+No PC0 (Command Prompt):
+  ssh -l admin 172.22.22.1     -> password class; entra directamente em router1#
+  ssh -l admin 172.22.22.222   -> password class; entra directamente em SW1#
+  telnet 172.22.22.1           -> recusado (transport input ssh)
+
+Três passwords erradas seguidas bloqueiam novos logins durante 60 s
+(show login mostra o modo quiet activo).
+
+7. NOTAS SOBRE A FICHA
+--------------------------------------------------------------------------
+- Com "username admin privilege 15" a sessão SSH entra logo no modo privilegiado,
+  por isso a enable secret não é estritamente necessária para o SSH funcionar.
+  Passa a ser se o utilizador não tiver privilege 15 e for preciso fazer enable.
+- A chave tem de ser gerada antes de "ip ssh version 2"; com menos de 768 bits
+  o IOS fica em SSH 1.99 e rejeita a versão 2.
+- "crypto key generate rsa" sem argumentos pede o tamanho da chave de forma
+  interactiva; com "general-keys modulus 1024" o bloco cola-se de uma vez.
+- O cabeçalho interno da ficha diz "PL03", mas o ficheiro é PL04_1.

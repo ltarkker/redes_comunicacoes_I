@@ -1,0 +1,140 @@
+==========================================================================
+PL04 - EXERCÍCIO 1 - DUAS SUB-REDES /25
+Lista de comandos (resolução)
+Redes e Comunicações 1 - LEI - ISTEC Porto
+==========================================================================
+
+
+1. PRESSUPOSTOS
+--------------------------------------------------------------------------
+- O esquema não vem no ficheiro da ficha; segue-se o que está escrito na ficha:
+  R1 Gig0/0 -> SW1 -> PC1 (Subrede 1) | R1 Gig0/1 -> SW2 -> PC2 (Subrede 2).
+- PCs ligados à Fa0/1 de cada switch.
+- Passwords: consola e vty = cisco | enable secret = class.
+
+2. A) DIVISÃO DE 192.168.1.0/24 EM DUAS SUB-REDES
+--------------------------------------------------------------------------
+1 bit emprestado: /24 -> /25 | 128 endereços por sub-rede, 126 utilizáveis.
+
+            Rede            Máscara                 Broadcast        Intervalo
+Subrede 1   192.168.1.0     255.255.255.128 (/25)   192.168.1.127    192.168.1.1   - 192.168.1.126
+Subrede 2   192.168.1.128   255.255.255.128 (/25)   192.168.1.255    192.168.1.129 - 192.168.1.254
+
+Equip.  Interface  IP              Máscara            Gateway
+R1      Gig0/0     192.168.1.1     255.255.255.128    -
+R1      Gig0/1     192.168.1.129   255.255.255.128    -
+PC1     Fa0        192.168.1.2     255.255.255.128    192.168.1.1
+PC2     Fa0        192.168.1.130   255.255.255.128    192.168.1.129
+
+3. B) CONFIGURAÇÕES BASE - ROUTER R1
+--------------------------------------------------------------------------
+--- R1 --------------------------------------------------------------------
+Colar no separador CLI a partir do prompt inicial (responder "no" ao diálogo inicial, se aparecer).
+
+enable
+configure terminal
+hostname R1
+no ip domain-lookup
+! password do modo privilegiado (cifrada)
+enable secret class
+! password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! password das linhas vty (acesso remoto por Telnet)
+line vty 0 4
+ password cisco
+ login
+ exit
+service password-encryption
+banner motd #Acesso apenas a pessoal autorizado!#
+! interfaces: gateway de cada subrede
+interface GigabitEthernet0/0
+ description Subrede 1 - SW1
+ ip address 192.168.1.1 255.255.255.128
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description Subrede 2 - SW2
+ ip address 192.168.1.129 255.255.255.128
+ no shutdown
+ exit
+end
+write memory
+
+
+4. B) CONFIGURAÇÕES BASE - SWITCHES
+--------------------------------------------------------------------------
+--- SW1 -------------------------------------------------------------------
+enable
+configure terminal
+hostname SW1
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+line vty 0 15
+ password cisco
+ login
+ exit
+service password-encryption
+banner motd #Acesso apenas a pessoal autorizado!#
+end
+write memory
+
+--- SW2 -------------------------------------------------------------------
+enable
+configure terminal
+hostname SW2
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+line vty 0 15
+ password cisco
+ login
+ exit
+service password-encryption
+banner motd #Acesso apenas a pessoal autorizado!#
+end
+write memory
+
+
+5. PCS
+--------------------------------------------------------------------------
+Desktop > IP Configuration > Static, ou Desktop > Command Prompt.
+O Command Prompt do PC não aceita várias linhas coladas de uma vez: uma linha por PC.
+
+PC1:  ipconfig 192.168.1.2 255.255.255.128 192.168.1.1
+PC2:  ipconfig 192.168.1.130 255.255.255.128 192.168.1.129
+
+6. C) TESTE DE CONECTIVIDADE
+--------------------------------------------------------------------------
+No PC1 (Command Prompt):
+  ping 192.168.1.1             -> gateway da Subrede 1
+  ping 192.168.1.129           -> gateway da Subrede 2
+  ping 192.168.1.130           -> PC2, na outra subrede
+
+O ping ao PC2 confirma o encaminhamento entre sub-redes pelo R1 (redes
+directamente ligadas, sem rotas adicionais).
+
+7. D) ACESSO VIA TELNET AO ROUTER
+--------------------------------------------------------------------------
+No PC1 (Command Prompt):
+  telnet 192.168.1.1
+  Password: cisco              -> password das linhas vty; fica em R1>
+  enable
+  Password: class              -> enable secret; passa a R1#
+  show users                   -> mostra a sessão vty com o IP do PC1
+  exit
+
+Sem "login" + "password" nas vty, o router recusa a ligação
+("Password required, but none set").

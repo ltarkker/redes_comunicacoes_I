@@ -1,0 +1,154 @@
+==========================================================================
+PL01 - CONFIGURAÇÕES BASE
+Lista de comandos (resolução)
+Redes e Comunicações 1 - LEI - ISTEC Porto
+==========================================================================
+
+
+1. PRESSUPOSTOS
+--------------------------------------------------------------------------
+- Endereçamento de exemplo: o enunciado remete para o endereçamento do docente,
+  que não consta da ficha.
+- Nomes R1, SW1 e SW2: as etiquetas do esquema não estão legíveis.
+- Passwords: consola = cisco | enable secret = class.
+
+2. TOPOLOGIA E ENDEREÇAMENTO
+--------------------------------------------------------------------------
+Ligação        Origem          Destino         Cabo
+R1  - SW1      R1 Gig0/0       SW1 Gig0/1      Copper Straight-Through
+R1  - SW2      R1 Gig0/1       SW2 Gig0/1      Copper Straight-Through
+SW1 - PC0      SW1 Fa0/16      PC0 Fa0         Copper Straight-Through
+SW1 - PC1      SW1 Fa0/5       PC1 Fa0         Copper Straight-Through
+SW2 - PC2      SW2 Fa0/19      PC2 Fa0         Copper Straight-Through
+SW2 - PC3      SW2 Fa0/18      PC3 Fa0         Copper Straight-Through
+
+Equip.  Interface  IP              Máscara          Gateway
+R1      Gig0/0     192.168.10.1    255.255.255.0    -
+R1      Gig0/1     192.168.20.1    255.255.255.0    -
+PC0     Fa0        192.168.10.10   255.255.255.0    192.168.10.1
+PC1     Fa0        192.168.10.11   255.255.255.0    192.168.10.1
+PC2     Fa0        192.168.20.10   255.255.255.0    192.168.20.1
+PC3     Fa0        192.168.20.11   255.255.255.0    192.168.20.1
+
+3. ROUTER R1 (ALÍNEAS B A F)
+--------------------------------------------------------------------------
+--- R1 --------------------------------------------------------------------
+Colar no separador CLI a partir do prompt inicial (responder "no" ao diálogo inicial, se aparecer).
+
+enable
+configure terminal
+! b) nome do equipamento
+hostname R1
+no ip domain-lookup
+! c) password na porta de consola
+line console 0
+ password cisco
+ login
+ exit
+! d) password do modo privilegiado (cifrada)
+enable secret class
+service password-encryption
+! e) banner
+banner motd #Acesso restrito a pessoal autorizado#
+! f) interfaces do router (gateways das LANs)
+interface GigabitEthernet0/0
+ description LAN SW1
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description LAN SW2
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown
+ exit
+end
+! gravar na NVRAM
+write memory
+
+
+4. SWITCHES (ALÍNEAS B A E)
+--------------------------------------------------------------------------
+--- SW1 -------------------------------------------------------------------
+enable
+configure terminal
+hostname SW1
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+service password-encryption
+banner motd #Acesso restrito a pessoal autorizado#
+! descrições das portas usadas
+interface GigabitEthernet0/1
+ description Uplink R1 Gig0/0
+ exit
+interface FastEthernet0/16
+ description PC0
+ exit
+interface FastEthernet0/5
+ description PC1
+ exit
+end
+write memory
+
+--- SW2 -------------------------------------------------------------------
+enable
+configure terminal
+hostname SW2
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+service password-encryption
+banner motd #Acesso restrito a pessoal autorizado#
+! descrições das portas usadas
+interface GigabitEthernet0/1
+ description Uplink R1 Gig0/1
+ exit
+interface FastEthernet0/19
+ description PC2
+ exit
+interface FastEthernet0/18
+ description PC3
+ exit
+end
+write memory
+
+
+5. PCS (ALÍNEA A)
+--------------------------------------------------------------------------
+Desktop > IP Configuration > Static, ou Desktop > Command Prompt.
+O Command Prompt do PC não aceita várias linhas coladas de uma vez: uma linha por PC.
+
+PC0:  ipconfig 192.168.10.10 255.255.255.0 192.168.10.1
+PC1:  ipconfig 192.168.10.11 255.255.255.0 192.168.10.1
+PC2:  ipconfig 192.168.20.10 255.255.255.0 192.168.20.1
+PC3:  ipconfig 192.168.20.11 255.255.255.0 192.168.20.1
+
+6. VERIFICAÇÃO (ALÍNEA G)
+--------------------------------------------------------------------------
+No R1:
+  show ip interface brief      -> Gig0/0 e Gig0/1 up/up com os IPs configurados
+  show running-config
+
+No PC0 (Command Prompt):
+  ping 192.168.10.11           -> PC1, mesma LAN
+  ping 192.168.20.10           -> PC2, outra LAN via R1
+  ping 192.168.20.11           -> PC3, outra LAN via R1
+
+Teste da consola e do banner no R1:
+  exit até sair da sessão, Enter -> aparece o banner e é pedida a password cisco
+  enable -> pede a password class
+
+Notas:
+- O primeiro ping para outra rede pode dar timeout enquanto o ARP resolve o MAC
+  do gateway; os seguintes respondem.
+- As portas dos switches demoram ~30 s (STP) a passar de laranja a verde.
+- Se o ping dentro da LAN funciona mas entre LANs não, verificar o gateway do PC
+  e se a interface do router está em shutdown.
