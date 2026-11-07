@@ -1,0 +1,530 @@
+==========================================================================
+PL04.2 - ENCAMINHAMENTO ESTÁTICO
+Lista de comandos (resolução)
+Redes e Comunicações 1 - LEI - ISTEC Porto
+==========================================================================
+
+1. PRESSUPOSTOS
+--------------------------------------------------------------------------
+- Uma rede classe C (/24) por LAN: 192.168.1.0/24 a 192.168.5.0/24.
+- Router = .1 | switch (VLAN 1) = .2 | PCs = .10 e .11.
+- Uplink dos switches na Gi0/1; PCs na Fa0/1 e Fa0/2.
+- COIMBRA = DCE nas duas ligações série (clock rate 64000).
+- consola = cisco | enable secret = class | SSH: admin / qwerty (domínio istec.pt).
+
+2. ENDEREÇAMENTO DAS LANS (EXERCÍCIO 1)
+--------------------------------------------------------------------------
+Rede   Hosts  End. rede    Broadcast      Máscara              Gama de hosts
+LAN 1  200    192.168.1.0  192.168.1.255  255.255.255.0 (/24)  192.168.1.1 – 192.168.1.254
+LAN 2  200    192.168.2.0  192.168.2.255  255.255.255.0 (/24)  192.168.2.1 – 192.168.2.254
+LAN 3  250    192.168.3.0  192.168.3.255  255.255.255.0 (/24)  192.168.3.1 – 192.168.3.254
+LAN 4  129    192.168.4.0  192.168.4.255  255.255.255.0 (/24)  192.168.4.1 – 192.168.4.254
+LAN 5  160    192.168.5.0  192.168.5.255  255.255.255.0 (/24)  192.168.5.1 – 192.168.5.254
+
+Séries: 14.123.23.0/30 (PORTO-COIMBRA) | 15.125.232.0/30 (COIMBRA-MATOSINHOS)
+
+3. TABELA DE ENDEREÇAMENTO (EXERCÍCIO 2)
+--------------------------------------------------------------------------
+Dispositivo  Interface  Endereço      Máscara          Gateway
+PORTO        Gi0/0      192.168.1.1   255.255.255.0    N/A
+PORTO        Gi0/1      192.168.2.1   255.255.255.0    N/A
+PORTO        S0/0/0     14.123.23.1   255.255.255.252  N/A
+COIMBRA      Gi0/0      192.168.5.1   255.255.255.0    N/A
+COIMBRA      S0/0/0     14.123.23.2   255.255.255.252  N/A
+COIMBRA      S0/0/1     15.125.232.1  255.255.255.252  N/A
+MATOSINHOS   Gi0/0      192.168.3.1   255.255.255.0    N/A
+MATOSINHOS   Gi0/1      192.168.4.1   255.255.255.0    N/A
+MATOSINHOS   S0/0/0     15.125.232.2  255.255.255.252  N/A
+SW1          VLAN 1     192.168.1.2   255.255.255.0    192.168.1.1
+SW2          VLAN 1     192.168.2.2   255.255.255.0    192.168.2.1
+SW3          VLAN 1     192.168.3.2   255.255.255.0    192.168.3.1
+SW4          VLAN 1     192.168.4.2   255.255.255.0    192.168.4.1
+SW5          VLAN 1     192.168.5.2   255.255.255.0    192.168.5.1
+PC1          Fa0        192.168.1.10  255.255.255.0    192.168.1.1
+PC2          Fa0        192.168.1.11  255.255.255.0    192.168.1.1
+PC3          Fa0        192.168.2.10  255.255.255.0    192.168.2.1
+PC4          Fa0        192.168.2.11  255.255.255.0    192.168.2.1
+PC5          Fa0        192.168.3.10  255.255.255.0    192.168.3.1
+PC6          Fa0        192.168.3.11  255.255.255.0    192.168.3.1
+PC7          Fa0        192.168.4.10  255.255.255.0    192.168.4.1
+PC8          Fa0        192.168.4.11  255.255.255.0    192.168.4.1
+PC9          Fa0        192.168.5.10  255.255.255.0    192.168.5.1
+PC10         Fa0        192.168.5.11  255.255.255.0    192.168.5.1
+
+4. CABLAGEM
+--------------------------------------------------------------------------
+Ligação               Origem                Destino                  Cabo
+PORTO - SW1           PORTO Gi0/0           SW1 Gi0/1                Copper Straight-Through
+PORTO - SW2           PORTO Gi0/1           SW2 Gi0/1                Copper Straight-Through
+MATOSINHOS - SW3      MATOSINHOS Gi0/0      SW3 Gi0/1                Copper Straight-Through
+MATOSINHOS - SW4      MATOSINHOS Gi0/1      SW4 Gi0/1                Copper Straight-Through
+COIMBRA - SW5         COIMBRA Gi0/0         SW5 Gi0/1                Copper Straight-Through
+PC1 - SW1             PC1 Fa0               SW1 Fa0/1                Copper Straight-Through
+PC2 - SW1             PC2 Fa0               SW1 Fa0/2                Copper Straight-Through
+PC3 - SW2             PC3 Fa0               SW2 Fa0/1                Copper Straight-Through
+PC4 - SW2             PC4 Fa0               SW2 Fa0/2                Copper Straight-Through
+PC5 - SW3             PC5 Fa0               SW3 Fa0/1                Copper Straight-Through
+PC6 - SW3             PC6 Fa0               SW3 Fa0/2                Copper Straight-Through
+PC7 - SW4             PC7 Fa0               SW4 Fa0/1                Copper Straight-Through
+PC8 - SW4             PC8 Fa0               SW4 Fa0/2                Copper Straight-Through
+PC9 - SW5             PC9 Fa0               SW5 Fa0/1                Copper Straight-Through
+PC10 - SW5            PC10 Fa0              SW5 Fa0/2                Copper Straight-Through
+COIMBRA - PORTO       COIMBRA S0/0/0 (DCE)  PORTO S0/0/0 (DTE)       Serial DCE
+COIMBRA - MATOSINHOS  COIMBRA S0/0/1 (DCE)  MATOSINHOS S0/0/0 (DTE)  Serial DCE
+
+5. ROUTERS (PONTOS 3 A 7)
+--------------------------------------------------------------------------
+Colar no separador CLI a partir do prompt Router> (responder "no" ao diálogo inicial).
+A geração da chave RSA demora alguns segundos.
+
+--- PORTO -----------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname PORTO
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereços IP das interfaces
+interface GigabitEthernet0/0
+ description LAN1 - SW1
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description LAN2 - SW2
+ ip address 192.168.2.1 255.255.255.0
+ no shutdown
+ exit
+interface Serial0/0/0
+ description WAN COIMBRA
+ ip address 14.123.23.1 255.255.255.252
+ no shutdown
+ exit
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+! 6. rotas estáticas para as redes não ligadas directamente
+ip route 192.168.3.0 255.255.255.0 14.123.23.2
+ip route 192.168.4.0 255.255.255.0 14.123.23.2
+ip route 192.168.5.0 255.255.255.0 14.123.23.2
+ip route 15.125.232.0 255.255.255.252 14.123.23.2
+end
+write memory
+
+--- COIMBRA ---------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname COIMBRA
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereços IP das interfaces
+interface GigabitEthernet0/0
+ description LAN5 - SW5
+ ip address 192.168.5.1 255.255.255.0
+ no shutdown
+ exit
+interface Serial0/0/0
+ description WAN PORTO
+ ip address 14.123.23.2 255.255.255.252
+ clock rate 64000
+ no shutdown
+ exit
+interface Serial0/0/1
+ description WAN MATOSINHOS
+ ip address 15.125.232.1 255.255.255.252
+ clock rate 64000
+ no shutdown
+ exit
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+! 6. rotas estáticas para as redes não ligadas directamente
+ip route 192.168.1.0 255.255.255.0 14.123.23.1
+ip route 192.168.2.0 255.255.255.0 14.123.23.1
+ip route 192.168.3.0 255.255.255.0 15.125.232.2
+ip route 192.168.4.0 255.255.255.0 15.125.232.2
+end
+write memory
+
+--- MATOSINHOS ------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname MATOSINHOS
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereços IP das interfaces
+interface GigabitEthernet0/0
+ description LAN3 - SW3
+ ip address 192.168.3.1 255.255.255.0
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description LAN4 - SW4
+ ip address 192.168.4.1 255.255.255.0
+ no shutdown
+ exit
+interface Serial0/0/0
+ description WAN COIMBRA
+ ip address 15.125.232.2 255.255.255.252
+ no shutdown
+ exit
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+! 6. rotas estáticas para as redes não ligadas directamente
+ip route 192.168.1.0 255.255.255.0 15.125.232.1
+ip route 192.168.2.0 255.255.255.0 15.125.232.1
+ip route 192.168.5.0 255.255.255.0 15.125.232.1
+ip route 14.123.23.0 255.255.255.252 15.125.232.1
+end
+write memory
+
+
+6. SWITCHES (PONTOS 3 A 7)
+--------------------------------------------------------------------------
+--- SW1 -------------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname SW1
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereço de gestão na VLAN 1
+interface vlan 1
+ ip address 192.168.1.2 255.255.255.0
+ no shutdown
+ exit
+! 7. gateway para o switch responder a outras redes
+ip default-gateway 192.168.1.1
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+--- SW2 -------------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname SW2
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereço de gestão na VLAN 1
+interface vlan 1
+ ip address 192.168.2.2 255.255.255.0
+ no shutdown
+ exit
+! 7. gateway para o switch responder a outras redes
+ip default-gateway 192.168.2.1
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+--- SW3 -------------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname SW3
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereço de gestão na VLAN 1
+interface vlan 1
+ ip address 192.168.3.2 255.255.255.0
+ no shutdown
+ exit
+! 7. gateway para o switch responder a outras redes
+ip default-gateway 192.168.3.1
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+--- SW4 -------------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname SW4
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereço de gestão na VLAN 1
+interface vlan 1
+ ip address 192.168.4.2 255.255.255.0
+ no shutdown
+ exit
+! 7. gateway para o switch responder a outras redes
+ip default-gateway 192.168.4.1
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+--- SW5 -------------------------------------------------------------------
+enable
+configure terminal
+! 3.1 nome do equipamento
+hostname SW5
+no ip domain-lookup
+! 3.2 password do modo privilegiado, cifrada
+enable secret class
+! 3.3 password da consola
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+! cifra as passwords em texto simples (consola)
+service password-encryption
+! 3.4 banner (delimitador #)
+banner motd #
+*********************************************
+ Todo o acesso nao autorizado e' punido por lei
+ Unauthorized access punished by law
+*********************************************
+#
+! 4. endereço de gestão na VLAN 1
+interface vlan 1
+ ip address 192.168.5.2 255.255.255.0
+ no shutdown
+ exit
+! 7. gateway para o switch responder a outras redes
+ip default-gateway 192.168.5.1
+! 5. acesso remoto por SSH (utilizador admin / password qwerty)
+ip domain-name istec.pt
+username admin secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 10 0
+ exit
+end
+write memory
+
+
+7. PCS (PONTO 4)
+--------------------------------------------------------------------------
+Desktop > IP Configuration > Static, ou no Command Prompt (uma linha por PC):
+
+PC1:   ipconfig 192.168.1.10 255.255.255.0 192.168.1.1
+PC2:   ipconfig 192.168.1.11 255.255.255.0 192.168.1.1
+PC3:   ipconfig 192.168.2.10 255.255.255.0 192.168.2.1
+PC4:   ipconfig 192.168.2.11 255.255.255.0 192.168.2.1
+PC5:   ipconfig 192.168.3.10 255.255.255.0 192.168.3.1
+PC6:   ipconfig 192.168.3.11 255.255.255.0 192.168.3.1
+PC7:   ipconfig 192.168.4.10 255.255.255.0 192.168.4.1
+PC8:   ipconfig 192.168.4.11 255.255.255.0 192.168.4.1
+PC9:   ipconfig 192.168.5.10 255.255.255.0 192.168.5.1
+PC10:  ipconfig 192.168.5.11 255.255.255.0 192.168.5.1
+
+8. ROTAS ESTÁTICAS (PONTO 6)
+--------------------------------------------------------------------------
+PORTO
+  192.168.3.0 255.255.255.0          via 14.123.23.2
+  192.168.4.0 255.255.255.0          via 14.123.23.2
+  192.168.5.0 255.255.255.0          via 14.123.23.2
+  15.125.232.0 255.255.255.252       via 14.123.23.2
+COIMBRA
+  192.168.1.0 255.255.255.0          via 14.123.23.1
+  192.168.2.0 255.255.255.0          via 14.123.23.1
+  192.168.3.0 255.255.255.0          via 15.125.232.2
+  192.168.4.0 255.255.255.0          via 15.125.232.2
+MATOSINHOS
+  192.168.1.0 255.255.255.0          via 15.125.232.1
+  192.168.2.0 255.255.255.0          via 15.125.232.1
+  192.168.5.0 255.255.255.0          via 15.125.232.1
+  14.123.23.0 255.255.255.252        via 15.125.232.1
+
+Alternativa nos routers de ponta (stub):
+  PORTO:       ip route 0.0.0.0 0.0.0.0 14.123.23.2
+  MATOSINHOS:  ip route 0.0.0.0 0.0.0.0 15.125.232.1
+  O COIMBRA precisa sempre das rotas específicas.
+
+9. VERIFICAÇÃO (PONTO 8)
+--------------------------------------------------------------------------
+Nos routers:
+  show ip interface brief          -> Gi e Serial up/up
+  show ip route                    -> redes C (ligadas) e S (estáticas)
+  show controllers serial 0/0/0    -> no COIMBRA: DCE e clock rate
+  show ip ssh                      -> SSH Enabled - version 2.0
+
+No PC1 (Command Prompt):
+  ping 192.168.2.10                -> LAN 2 (mesmo router)
+  ping 192.168.5.10                -> LAN 5 (uma série)
+  ping 192.168.3.10                -> LAN 3 (duas séries)
+  ping 192.168.4.11                -> LAN 4 (duas séries)
+  tracert 192.168.3.10             -> 192.168.1.1, 14.123.23.2, 15.125.232.2, PC5
+  ssh -l admin 192.168.4.2         -> password qwerty; enable pede class
+  telnet 192.168.4.2               -> recusado (transport input ssh)
+
+Notas:
+- O primeiro ping para cada rede remota pode dar timeout por causa do ARP.
+- Se falhar só para algumas redes: rota em falta/next-hop errado num router do
+  caminho, ou série sem clock rate no lado DCE.
