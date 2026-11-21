@@ -1,0 +1,290 @@
+==========================================================================
+PL04.4 - DHCP IPv4
+Lista de comandos (resolução)
+Redes e Comunicações 1 - LEI - ISTEC Porto
+==========================================================================
+
+
+1. PRESSUPOSTOS
+--------------------------------------------------------------------------
+- Routers 2911, switches 2960-24TT, PCs PC-PT (como nas figuras da ficha).
+- Router = primeiro endereço da rede | switches (VLAN 1) = endereços seguintes.
+- DHCP no próprio router; excluídos os 10 primeiros endereços de cada rede
+  (router, switches e eventuais equipamentos com IP fixo).
+- consola = cisco | enable secret = class | SSH: admin / qwerty (domínio istec.pt).
+- As linhas a tracejado da figura do exercício 2 são cabos cruzados
+  (Copper Cross-Over): RTR_SEDE-RTR_FABRICA e SW_PROD-SW_PROD1.
+- Ficheiros: PL04.4_Ex1_DHCP_RCOM1.pkt e PL04.4_Ex2_DHCP_RCOM1.pkt
+
+
+==========================================================================
+EXERCÍCIO 1 - RTR_EMPRESA
+==========================================================================
+
+2. ENDEREÇAMENTO
+--------------------------------------------------------------------------
+Rede               Máscara            Gateway        Pool DHCP
+192.168.0.0/24     255.255.255.0      192.168.0.1    192.168.0.11 - .254
+192.168.100.0/25   255.255.255.128    192.168.100.1  192.168.100.11 - .126
+
+Equip.        Interface  IP              Máscara            Gateway
+RTR_EMPRESA   Gi0/0      192.168.0.1     255.255.255.0      -
+RTR_EMPRESA   Gi0/1      192.168.100.1   255.255.255.128    -
+SW_A2         VLAN 1     192.168.0.2     255.255.255.0      192.168.0.1
+SW_A1         VLAN 1     192.168.100.2   255.255.255.128    192.168.100.1
+PC0, PC2, PC3 Fa0        DHCP (192.168.0.0/24)
+PC4, PC5      Fa0        DHCP (192.168.100.0/25)
+
+3. CABLAGEM (Copper Straight-Through)
+--------------------------------------------------------------------------
+RTR_EMPRESA Gi0/0 - SW_A2 Fa0/1      RTR_EMPRESA Gi0/1 - SW_A1 Fa0/1
+SW_A2 Fa0/2 - PC3 | Fa0/3 - PC0 | Fa0/4 - PC2
+SW_A1 Fa0/2 - PC5 | Fa0/3 - PC4
+
+4. RTR_EMPRESA
+--------------------------------------------------------------------------
+enable
+configure terminal
+! a. hostname
+hostname RTR_EMPRESA
+no ip domain-lookup
+! b. passwords
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+service password-encryption
+! c. banner
+banner motd # Acesso nao autorizado e proibido - RTR_EMPRESA #
+! interfaces
+interface GigabitEthernet0/0
+ description LAN 192.168.0.0/24 - SW_A2
+ ip address 192.168.0.1 255.255.255.0
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description LAN 192.168.100.0/25 - SW_A1
+ ip address 192.168.100.1 255.255.255.128
+ no shutdown
+ exit
+! d. SSH
+ip domain-name istec.pt
+username admin privilege 15 secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exit
+! e. DHCP
+ip dhcp excluded-address 192.168.0.1 192.168.0.10
+ip dhcp excluded-address 192.168.100.1 192.168.100.10
+ip dhcp pool LAN_A2
+ network 192.168.0.0 255.255.255.0
+ default-router 192.168.0.1
+ dns-server 8.8.8.8
+ domain-name istec.pt
+ exit
+ip dhcp pool LAN_A1
+ network 192.168.100.0 255.255.255.128
+ default-router 192.168.100.1
+ dns-server 8.8.8.8
+ domain-name istec.pt
+ exit
+end
+write memory
+
+5. SW_A2 (SW_A1 igual, trocando nome e endereços)
+--------------------------------------------------------------------------
+enable
+configure terminal
+hostname SW_A2
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+service password-encryption
+banner motd # Acesso nao autorizado e proibido - SW_A2 #
+interface vlan 1
+ ip address 192.168.0.2 255.255.255.0
+ no shutdown
+ exit
+ip default-gateway 192.168.0.1
+ip domain-name istec.pt
+username admin privilege 15 secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+ exit
+end
+write memory
+
+SW_A1: hostname SW_A1 | interface vlan 1: 192.168.100.2 255.255.255.128
+       ip default-gateway 192.168.100.1
+
+6. PCs
+--------------------------------------------------------------------------
+Desktop > IP Configuration > DHCP (em todos os PCs).
+
+
+==========================================================================
+EXERCÍCIO 2 - RTR_SEDE / RTR_FABRICA
+==========================================================================
+
+7. ENDEREÇAMENTO
+--------------------------------------------------------------------------
+Rede              Máscara            Gateway       Pool DHCP               Onde
+192.168.0.0/24    255.255.255.0      192.168.0.1   192.168.0.11 - .254     SEDE
+11.11.11.0/30     255.255.255.252    -             - (ligação entre routers)
+172.16.0.0/26     255.255.255.192    172.16.0.1    172.16.0.11 - .62       CONTAB
+172.22.0.0/22     255.255.252.0      172.22.0.1    172.22.0.11 - 172.22.3.254  PROD
+
+Equip.        Interface  IP              Máscara            Gateway
+RTR_SEDE      Gi0/0      192.168.0.1     255.255.255.0      -
+RTR_SEDE      Gi0/1      11.11.11.1      255.255.255.252    -
+RTR_FABRICA   Gi0/0      11.11.11.2      255.255.255.252    -
+RTR_FABRICA   Gi0/1      172.16.0.1      255.255.255.192    -
+RTR_FABRICA   Gi0/2      172.22.0.1      255.255.252.0      -
+SW_SEDE       VLAN 1     192.168.0.2     255.255.255.0      192.168.0.1
+SW_CONTAB     VLAN 1     172.16.0.2      255.255.255.192    172.16.0.1
+SW_PROD       VLAN 1     172.22.0.2      255.255.252.0      172.22.0.1
+SW_PROD1      VLAN 1     172.22.0.3      255.255.252.0      172.22.0.1
+PC0, PC2, PC3       DHCP (192.168.0.0/24)
+PC10, PC11          DHCP (172.16.0.0/26)
+PC6, PC7, PC8, PC9  DHCP (172.22.0.0/22)
+
+8. CABLAGEM
+--------------------------------------------------------------------------
+RTR_SEDE Gi0/0 - SW_SEDE Fa0/1            Straight-Through
+RTR_SEDE Gi0/1 - RTR_FABRICA Gi0/0        Cross-Over (tracejado)
+RTR_FABRICA Gi0/1 - SW_CONTAB Fa0/1       Straight-Through
+RTR_FABRICA Gi0/2 - SW_PROD Fa0/1         Straight-Through
+SW_PROD Fa0/2 - SW_PROD1 Fa0/1            Cross-Over (tracejado)
+PCs nas portas Fa0/x seguintes de cada switch, Straight-Through
+
+9. RTR_SEDE
+--------------------------------------------------------------------------
+enable
+configure terminal
+hostname RTR_SEDE
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+service password-encryption
+banner motd # Acesso nao autorizado e proibido - RTR_SEDE #
+interface GigabitEthernet0/0
+ description LAN SEDE 192.168.0.0/24
+ ip address 192.168.0.1 255.255.255.0
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description WAN RTR_FABRICA
+ ip address 11.11.11.1 255.255.255.252
+ no shutdown
+ exit
+ip domain-name istec.pt
+username admin privilege 15 secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exit
+! e. rotas estáticas para as redes da fábrica
+ip route 172.16.0.0 255.255.255.192 11.11.11.2
+ip route 172.22.0.0 255.255.252.0 11.11.11.2
+! f. DHCP
+ip dhcp excluded-address 192.168.0.1 192.168.0.10
+ip dhcp pool SEDE
+ network 192.168.0.0 255.255.255.0
+ default-router 192.168.0.1
+ dns-server 8.8.8.8
+ domain-name istec.pt
+ exit
+end
+write memory
+
+10. RTR_FABRICA
+--------------------------------------------------------------------------
+enable
+configure terminal
+hostname RTR_FABRICA
+no ip domain-lookup
+enable secret class
+line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+service password-encryption
+banner motd # Acesso nao autorizado e proibido - RTR_FABRICA #
+interface GigabitEthernet0/0
+ description WAN RTR_SEDE
+ ip address 11.11.11.2 255.255.255.252
+ no shutdown
+ exit
+interface GigabitEthernet0/1
+ description LAN CONTAB 172.16.0.0/26
+ ip address 172.16.0.1 255.255.255.192
+ no shutdown
+ exit
+interface GigabitEthernet0/2
+ description LAN PROD 172.22.0.0/22
+ ip address 172.22.0.1 255.255.252.0
+ no shutdown
+ exit
+ip domain-name istec.pt
+username admin privilege 15 secret qwerty
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exit
+! e. rota estática para a rede da sede
+ip route 192.168.0.0 255.255.255.0 11.11.11.1
+! f. DHCP
+ip dhcp excluded-address 172.16.0.1 172.16.0.10
+ip dhcp excluded-address 172.22.0.1 172.22.0.10
+ip dhcp pool CONTAB
+ network 172.16.0.0 255.255.255.192
+ default-router 172.16.0.1
+ dns-server 8.8.8.8
+ domain-name istec.pt
+ exit
+ip dhcp pool PROD
+ network 172.22.0.0 255.255.252.0
+ default-router 172.22.0.1
+ dns-server 8.8.8.8
+ domain-name istec.pt
+ exit
+end
+write memory
+
+11. SWITCHES (mesmo bloco do SW_A2, mudando nome/IP/gateway)
+--------------------------------------------------------------------------
+SW_SEDE    192.168.0.2 255.255.255.0     gateway 192.168.0.1
+SW_CONTAB  172.16.0.2  255.255.255.192   gateway 172.16.0.1
+SW_PROD    172.22.0.2  255.255.252.0     gateway 172.22.0.1
+SW_PROD1   172.22.0.3  255.255.252.0     gateway 172.22.0.1
+
+12. VERIFICAÇÃO
+--------------------------------------------------------------------------
+Routers:  show ip dhcp binding      -> endereços atribuídos
+          show ip dhcp pool         -> estado das pools
+          show ip route             -> rotas S (estáticas) e C (ligadas)
+          show ip ssh               -> SSH Enabled - version 2.0
+PCs:      ipconfig /all             -> IP obtido por DHCP, gateway e DNS
+          ping entre PCs de redes diferentes (ex.2: SEDE <-> PROD/CONTAB)
+          ssh -l admin 192.168.0.1  -> password qwerty
